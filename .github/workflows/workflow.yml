@@ -25,13 +25,56 @@ jobs:
         distribution: 'temurin'
         cache: 'maven'
     
-    - name: Download Jenkinsfile Runner
+    - name: Setup Jenkins CLI
       run: |
-        wget https://repo.jenkins-ci.org/releases/io/jenkins/jenkinsfile-runner/jenkinsfile-runner/1.0-beta-29/jenkinsfile-runner-1.0-beta-29-app.zip
-        unzip jenkinsfile-runner-1.0-beta-29-app.zip
-        chmod +x jenkinsfile-runner/bin/jenkinsfile-runner
+        # Create Jenkins home directory
+        mkdir -p jenkins_home
+        
+        # Download Jenkins WAR file
+        wget https://get.jenkins.io/war-stable/latest/jenkins.war
+        
+        # Start Jenkins in the background
+        java -Djenkins.install.runSetupWizard=false -jar jenkins.war --httpPort=8080 > jenkins.log 2>&1 &
+        
+        # Wait for Jenkins to start
+        echo "Waiting for Jenkins to start..."
+        until curl -s http://localhost:8080 > /dev/null; do
+          sleep 5
+        done
+        
+        # Download Jenkins CLI
+        wget http://localhost:8080/jnlpJars/jenkins-cli.jar
     
-    - name: Run Jenkinsfile
-      uses: jenkinsci/jenkinsfile-runner-github-actions/jenkinsfile-runner-prepackaged@v1
+    - name: Validate and Run Jenkinsfile
+      run: |
+        # Validate Jenkinsfile syntax
+        java -jar jenkins-cli.jar -s http://localhost:8080 declarative-linter < Jenkinsfile
+        
+        # Create a temporary job and run it
+        cat << EOF > job.xml
+        <?xml version='1.1' encoding='UTF-8'?>
+        <flow-definition plugin="workflow-job">
+          <definition class="org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition" plugin="workflow-cps">
+            <script>\$(cat Jenkinsfile)</script>
+            <sandbox>true</sandbox>
+          </definition>
+        </flow-definition>
+        EOF
+        
+        java -jar jenkins-cli.jar -s http://localhost:8080 create-job pipeline-job < job.xml
+        java -jar jenkins-cli.jar -s http://localhost:8080 build pipeline-job -s -v
+    
+    - name: Collect logs
+      if: always()
+      run: |
+        echo "=== Jenkins Logs ==="
+        cat jenkins.log
+        
+    - name: Upload logs
+      if: always()
+      uses: actions/upload-artifact@v3
       with:
-        jenkinsfile: './Jenkinsfile'
+        name: jenkins-logs
+        path: |
+          jenkins.log
+          jenkins_home/jobs/pipeline-job/builds/*/log
