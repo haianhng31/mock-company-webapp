@@ -4,19 +4,77 @@ on:
   push:
     branches:
       - main
+      - jenkin
   pull_request:
     branches:
       - main
+      - jenkin
 
 jobs:
-  jenkinsfile-runner-prepackaged:
+  run-jenkinsfile:
     runs-on: ubuntu-latest
+    
     steps:
     - name: Checkout Code
-      uses: actions/checkout@v3
-
-    - name: Run Jenkinsfile with Jenkinsfile Runner
-      uses: jenkinsci/jenkinsfile-runner-github-actions/jenkinsfile-runner-prepackaged@v1
+      uses: actions/checkout@v4
+    
+    - name: Set up Java
+      uses: actions/setup-java@v3
       with:
-        version: '1.0'
-        jenkinsfile: './Jenkinsfile'  # Specify the path to your Jenkinsfile
+        java-version: '11'
+        distribution: 'temurin'
+        cache: 'maven'
+    
+    - name: Setup Jenkins CLI
+      run: |
+        # Create Jenkins home directory
+        mkdir -p jenkins_home
+        
+        # Download Jenkins WAR file
+        wget https://get.jenkins.io/war-stable/latest/jenkins.war
+        
+        # Start Jenkins in the background
+        java -Djenkins.install.runSetupWizard=false -jar jenkins.war --httpPort=8080 > jenkins.log 2>&1 &
+        
+        # Wait for Jenkins to start
+        echo "Waiting for Jenkins to start..."
+        until curl -s http://localhost:8080 > /dev/null; do
+          sleep 5
+        done
+        
+        # Download Jenkins CLI
+        wget http://localhost:8080/jnlpJars/jenkins-cli.jar
+    
+    - name: Validate and Run Jenkinsfile
+      run: |
+        # Validate Jenkinsfile syntax
+        java -jar jenkins-cli.jar -s http://localhost:8080 declarative-linter < Jenkinsfile
+        
+        # Create a temporary job and run it
+        cat << EOF > job.xml
+        <?xml version='1.1' encoding='UTF-8'?>
+        <flow-definition plugin="workflow-job">
+          <definition class="org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition" plugin="workflow-cps">
+            <script>\$(cat Jenkinsfile)</script>
+            <sandbox>true</sandbox>
+          </definition>
+        </flow-definition>
+        EOF
+        
+        java -jar jenkins-cli.jar -s http://localhost:8080 create-job pipeline-job < job.xml
+        java -jar jenkins-cli.jar -s http://localhost:8080 build pipeline-job -s -v
+    
+    - name: Collect logs
+      if: always()
+      run: |
+        echo "=== Jenkins Logs ==="
+        cat jenkins.log
+        
+    - name: Upload logs
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: jenkins-logs
+        path: |
+          jenkins.log
+          jenkins_home/jobs/pipeline-job/builds/*/log
