@@ -13,23 +13,19 @@ on:
 jobs:
   run-jenkinsfile:
     runs-on: ubuntu-latest
+    
     steps:
     - name: Checkout Code
-      uses: actions/checkout@v3
-
-    - name: Set up Java 11
+      uses: actions/checkout@v4    # Updated to latest version
+    
+    - name: Set up Java
       uses: actions/setup-java@v3
       with:
         java-version: '11'
-        distribution: 'adopt'
-
-    - name: Download Jenkinsfile Runner
-      run: |
-        curl -L -o jenkinsfile-runner.tar.gz https://repo.jenkins-ci.org/releases/io/jenkins/jenkinsfile-runner/jenkinsfile-runner/1.0-beta-24/jenkinsfile-runner-1.0-beta-24.tar.gz
-        tar -xvzf jenkinsfile-runner.tar.gz
-
-    - name: Run Jenkinsfile
-      uses: jenkinsci/jenkinsfile-runner-github-actions/jenkinsfile-runner-prepackaged@v1
+        distribution: 'temurin'    # More reliable than AdoptOpenJDK
+        cache: 'maven'            # Added caching for better performance
+    
+    - name: Setup Jenkins Pipeline
+      uses: jenkinsci/jenkinsfile-runner-action@v2.5.0  # Using official action instead
       with:
-        version: '1.0'
         jenkinsfile: './Jenkinsfile'
