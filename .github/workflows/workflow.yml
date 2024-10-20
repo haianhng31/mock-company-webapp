@@ -16,16 +16,22 @@ jobs:
     
     steps:
     - name: Checkout Code
-      uses: actions/checkout@v4    # Updated to latest version
+      uses: actions/checkout@v4
     
     - name: Set up Java
       uses: actions/setup-java@v3
       with:
         java-version: '11'
-        distribution: 'temurin'    # More reliable than AdoptOpenJDK
-        cache: 'maven'            # Added caching for better performance
+        distribution: 'temurin'
+        cache: 'maven'
     
-    - name: Setup Jenkins Pipeline
-      uses: jenkinsci/jenkinsfile-runner-github-actions@v2  # Using official action instead
+    - name: Download Jenkinsfile Runner
+      run: |
+        wget https://repo.jenkins-ci.org/releases/io/jenkins/jenkinsfile-runner/jenkinsfile-runner/1.0-beta-29/jenkinsfile-runner-1.0-beta-29-app.zip
+        unzip jenkinsfile-runner-1.0-beta-29-app.zip
+        chmod +x jenkinsfile-runner/bin/jenkinsfile-runner
+    
+    - name: Run Jenkinsfile
+      uses: jenkinsci/jenkinsfile-runner-github-actions/jenkinsfile-runner-prepackaged@v1
       with:
         jenkinsfile: './Jenkinsfile'
