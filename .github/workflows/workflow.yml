@@ -19,4 +19,4 @@ jobs:
       uses: jenkinsci/jenkinsfile-runner-github-actions/jenkinsfile-runner-prepackaged@v1
       with:
         version: '1.0'
-        jenkinsfile: './Jenkinsfile'  # Specify the path to your Jenkinsfile
+        jenkinsfile: './Jenkinsfile' 
