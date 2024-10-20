@@ -26,6 +26,6 @@ jobs:
         cache: 'maven'            # Added caching for better performance
     
     - name: Setup Jenkins Pipeline
-      uses: jenkinsci/jenkinsfile-runner-action@v2.5.0  # Using official action instead
+      uses: jenkinsci/jenkinsfile-runner-github-actions@v2  # Using official action instead
       with:
         jenkinsfile: './Jenkinsfile'
