@@ -4,19 +4,21 @@ on:
   push:
     branches:
       - main
+      - jenkin
   pull_request:
     branches:
       - main
+      - jenkin
 
 jobs:
-  jenkinsfile-runner-prepackaged:
+  run-jenkinsfile:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout Code
       uses: actions/checkout@v3
 
-    - name: Run Jenkinsfile with Jenkinsfile Runner
+    - name: Run Jenkinsfile
       uses: jenkinsci/jenkinsfile-runner-github-actions/jenkinsfile-runner-prepackaged@v1
       with:
         version: '1.0'
-        jenkinsfile: './Jenkinsfile' 
+        jenkinsfile: './Jenkinsfile'
